@@ -35,12 +35,12 @@ def linear1d(inputlin, inputdim, outputdim, name="linear1d", std=0.02, mn=0.0):
         return tf.matmul(inputlin, weight) + bias
 
 
-def general_conv2d(inputconv, o_d=64, f_h=5, f_w=5, s_h=1, s_w=1, stddev=0.02, padding="VALID", name="conv2d", do_norm=True, norm_type='batch_norm', do_relu=True, relufactor=0):
+def general_conv2d(inputconv, output_dim=64, filter_height=4, filter_width=4, stride_height=2, stride_width=2, stddev=0.02, padding="SAME", name="conv2d", do_norm=True, norm_type='batch_norm', do_relu=True, relufactor=0):
     with tf.variable_scope(name) as scope:
 
-        conv = tf.contrib.layers.conv2d(inputconv, o_d, [f_w, f_h], [s_w, s_h], padding, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(stddev=stddev),biases_initializer=tf.constant_initializer(0.0))
+        conv = tf.contrib.layers.conv2d(inputconv, output_dim, [filter_width, filter_height], [stride_width, stride_height], padding, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(stddev=stddev),biases_initializer=tf.constant_initializer(0.0))
         if do_norm:
-            if norm_type == 'instance':
+            if norm_type == 'instance_norm':
                 conv = instance_norm(conv)
             elif norm_type == 'batch_norm':
                 conv = tf.contrib.layers.batch_norm(conv, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope="batch_norm")
@@ -55,10 +55,10 @@ def general_conv2d(inputconv, o_d=64, f_h=5, f_w=5, s_h=1, s_w=1, stddev=0.02, p
 
 
 
-def general_deconv2d(inputconv, o_d=64, f_h=7, f_w=7, s_h=1, s_w=1, stddev=0.02, padding="VALID", name="deconv2d", do_norm=True, norm_type='batch_norm', do_relu=True, relufactor=0):
+def general_deconv2d(inputconv, output_dim=64, filter_height=7, filter_width=7, stride_height=1, stride_width=1, stddev=0.02, padding="VALID", name="deconv2d", do_norm=False, norm_type='batch_norm', do_relu=False, relufactor=0):
     with tf.variable_scope(name) as scope:
 
-        conv = tf.contrib.layers.conv2d_transpose(inputconv, o_d, [f_h, f_w], [s_h, s_w], padding, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(stddev=stddev),biases_initializer=tf.constant_initializer(0.0))
+        conv = tf.contrib.layers.conv2d_transpose(inputconv, output_dim, [filter_height, filter_width], [stride_height, stride_width], padding, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(stddev=stddev),biases_initializer=tf.constant_initializer(0.0))
 
         if do_norm:
             if norm_type == 'instance':

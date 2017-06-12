@@ -101,10 +101,32 @@ class Fader():
 
 		return imgs/127.5-1.0
 
+	def encoder(self):
+
+		with tf.variable_scope("Encoder") as scope:
+
+			o_c1 = general_conv2d(self.input_imgs, 16, name="C16")
+			o_c2 = general_conv2d(o_c1, 32, name="C32")
+			o_c3 = general_conv2d(o_c2, 64, name="C64")
+			o_c4 = general_conv2d(o_c3, 128, name="C128")
+			o_c5 = general_conv2d(o_c4, 256, name="C256")
+			o_c6 = general_conv2d(o_c5, 256, name="C512_1")
+			o_c7 = general_conv2d(o_c6, 256, name="C512_2")
+
+	def decoder(self):
+
+		with tf.variable_scope("Decoder") as scope:
+
+			
+
+
 	def cifar_model_setup(self):
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
 		self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
+
+
+
 
 
 	def model_setup(self):
@@ -116,8 +138,6 @@ class Fader():
 
 			if (self.dataset == 'cifar-10'):
 				self.cifar_model_setup()
-			elif (self.dataset == 'Imagenet'):
-				self.inet_model_setup()
 			else :
 				print("No such dataset exist. Exiting the program")
 				sys.exit()
