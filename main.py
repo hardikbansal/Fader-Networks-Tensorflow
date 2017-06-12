@@ -27,6 +27,7 @@ class Fader():
 		self.parser.add_option('--img_width', type='int', default=32, dest='img_width')
 		self.parser.add_option('--img_height', type='int', default=32, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
+		self.parser.add_option('--attr_size', type='int', default=10, dest='attr_size')
 		self.parser.add_option('--num_groups', type='int', default=3, dest='num_groups')
 		self.parser.add_option('--num_blocks', type='int', default=4, dest='num_blocks')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
@@ -63,6 +64,7 @@ class Fader():
 			self.img_depth = opt.img_depth
 
 		self.img_size = self.img_width*self.img_height*self.img_depth
+		self.attr_size = opt.attr_size
 		self.num_groups = opt.num_groups
 		self.num_blocks = opt.num_blocks
 		self.num_images_per_file = 10000
@@ -101,31 +103,48 @@ class Fader():
 
 		return imgs/127.5-1.0
 
-	def encoder(self):
+	def encoder(self, input_enc, name="Encoder"):
 
-		with tf.variable_scope("Encoder") as scope:
+		with tf.variable_scope(name) as scope:
 
-			o_c1 = general_conv2d(self.input_imgs, 16, name="C16")
+			o_c1 = general_conv2d(input_enc, 16, name="C16")
 			o_c2 = general_conv2d(o_c1, 32, name="C32")
 			o_c3 = general_conv2d(o_c2, 64, name="C64")
 			o_c4 = general_conv2d(o_c3, 128, name="C128")
 			o_c5 = general_conv2d(o_c4, 256, name="C256")
-			o_c6 = general_conv2d(o_c5, 256, name="C512_1")
-			o_c7 = general_conv2d(o_c6, 256, name="C512_2")
+			o_c6 = general_conv2d(o_c5, 512, name="C512_1")
+			o_c7 = general_conv2d(o_c6, 512, name="C512_2")
 
-	def decoder(self):
+			return o_c7
 
-		with tf.variable_scope("Decoder") as scope:
+	def decoder(self, input_dec, name="Decoder"):
 
-			
+		with tf.variable_scope(name) as scope:
+
+			o_d1 = general_deconv2d(input_dec, 512, name="D512_2")
+			tf.concat(o_d1, self.input_attr, 3)
+			o_d2 = general_deconv2d(o_d1, 256, name="D512_1")
+			tf.concat(o_d2, self.input_attr, 3)
+			o_d3 = general_deconv2d(o_d2, 128, name="D256")
+			tf.concat(o_d3, self.input_attr, 3)
+			o_d4 = general_deconv2d(o_d3, 64, name="D128")
+			tf.concat(o_d4, self.input_attr, 3)
+			o_d5 = general_deconv2d(o_d4, 32, name="D64")
+			tf.concat(o_d5, self.input_attr, 3)
+			o_d6 = general_deconv2d(o_d5, 16, name="D32")
+			tf.concat(o_d6, self.input_attr, 3)
+			o_d7 = general_deconv2d(o_d6, 3, name="D16")
+
+			return o_d7
 
 
 	def cifar_model_setup(self):
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-		self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
+		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, 1, 1, self.attr_size])
 
-
+		o_enc = self.encoder(input_enc)
+		o_dec = slef.decoder(o_enc)
 
 
 
