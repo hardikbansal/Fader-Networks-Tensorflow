@@ -82,12 +82,17 @@ class Fader():
 		imageFolderPath = '../MenWomenDataset/img_align_celeba/img_align_celeba'
 		imagePath = glob.glob(imageFolderPath+'/*.jpg')
 
-		# print("I am here")
-		# print(imagePath)
-
 		self.train_imgs = np.array( [np.array(Image.open(imagePath[i]), 'f') for i in range(500)] )
 
-		print(self.train_imgs[0])
+		dictn = {}
+
+		with open("../MenWomenDataset/list_attr_celeba.txt") as f:
+			for lines in f:
+				temp = lines
+				temp = temp.split()
+				dictn[temp[0]] = temp[1:]
+
+		# print(self.train_imgs[0])
 
 
 
