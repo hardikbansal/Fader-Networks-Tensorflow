@@ -105,22 +105,22 @@ class Fader():
 
 			return o_c7
 
-	def decoder(self, input_dec, name="Decoder"):
+	def decoder(self, input_dec, attr, name="Decoder"):
 
 		with tf.variable_scope(name) as scope:
 
 			o_d1 = general_deconv2d(input_dec, 512, name="D512_2")
-			tf.concat(o_d1, self.input_attr, 3)
+			tf.concat(o_d1, attr, 3)
 			o_d2 = general_deconv2d(o_d1, 256, name="D512_1")
-			tf.concat(o_d2, self.input_attr, 3)
+			tf.concat(o_d2, attr, 3)
 			o_d3 = general_deconv2d(o_d2, 128, name="D256")
-			tf.concat(o_d3, self.input_attr, 3)
+			tf.concat(o_d3, attr, 3)
 			o_d4 = general_deconv2d(o_d3, 64, name="D128")
-			tf.concat(o_d4, self.input_attr, 3)
+			tf.concat(o_d4, attr, 3)
 			o_d5 = general_deconv2d(o_d4, 32, name="D64")
-			tf.concat(o_d5, self.input_attr, 3)
+			tf.concat(o_d5, attr, 3)
 			o_d6 = general_deconv2d(o_d5, 16, name="D32")
-			tf.concat(o_d6, self.input_attr, 3)
+			tf.concat(o_d6, attr, 3)
 			o_d7 = general_deconv2d(o_d6, 3, name="D16")
 
 			return o_d7
@@ -137,38 +137,74 @@ class Fader():
 			o_disc3 = linear1d(o_disc2, 512, self.num_attr)
 
 			return o_disc3
-
-
-
 			
 
-	def cifar_model_setup(self):
+	def celeb_model_setup(self):
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
 		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, 1, 1, self.num_attr])
 
-		o_enc = self.encoder(input_enc)
-		o_dec = slef.decoder(o_enc)
-
+		self.o_enc = self.encoder(self.input_imgs)
+		self.o_dec = slef.decoder(o_enc, self.input_attr)
+		self.o_disc = self.discriminator(o_enc)
 
 
 	def model_setup(self):
 
 		with tf.variable_scope("Model") as scope:
 
-			self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-			self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
-
-			if (self.dataset == 'cifar-10'):
-				self.cifar_model_setup()
-			else :
-				print("No such dataset exist. Exiting the program")
-				sys.exit()
+			self.celeb_model_setup()
+			
 
 		self.model_vars = tf.trainable_variables()
 		for var in self.model_vars: print(var.name, var.get_shape())
 
 		self.do_setup = False
+
+
+	def generation_loss(self, input_img, output_img, loss_type='mse'):
+
+		if (loss_type == 'mse'):
+			return tf.reduce_sum(tf.squared_difference(input_img, output_img),1)
+		elif (loss_type == 'log_diff'):
+			epsilon = 1e-8
+			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),1)
+
+	def loss_setup(self):
+
+		self.img_loss = self.generation_loss( self.input_imgs, self.o_dec)
+
+	def train(self):
+
+		model_setup()
+		loss_setup()
+
+		init = tf.global_variables_initializer()
+		saver = tf.train.Saver()
+
+		if not os.path.exists(self.images_dir+"/train/"):
+			os.makedirs(self.images_dir+"/train/")
+		if not os.path.exists(self.check_dir):
+			os.makedirs(self.check_dir)
+
+
+		with tf.Session() as sess:
+
+			sess.run(init)
+			writer = tf.summary.FileWriter(self.tensorboard_dir)
+			writer.add_graph(sess.graph)
+
+			if self.load_checkpoint:
+				chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
+				saver.restore(sess,chkpt_fname)
+
+			for epoch in range(0, self.max_epoch):
+
+				for itr in range(0, int(self.num_images/self.batch_size)):
+
+					imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
+					labels = self.train_labels[itr*self.batch_size:(itr+1)*(self.batch_size)]
+
 
 
 def main():
