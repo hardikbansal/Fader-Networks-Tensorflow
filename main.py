@@ -24,7 +24,7 @@ class Fader():
 		self.parser = optparse.OptionParser()
 
 		self.parser.add_option('--num_iter', type='int', default=1000, dest='num_iter')
-		self.parser.add_option('--batch_size', type='int', default=100, dest='batch_size')
+		self.parser.add_option('--batch_size', type='int', default=32, dest='batch_size')
 		self.parser.add_option('--img_width', type='int', default=32, dest='img_width')
 		self.parser.add_option('--img_height', type='int', default=32, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
@@ -36,7 +36,7 @@ class Fader():
 		self.parser.add_option('--enc_size', type='int', default=256, dest='enc_size')
 		self.parser.add_option('--dec_size', type='int', default=256, dest='dec_size')
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
-		self.parser.add_option('--dataset', type='string', default="cifar-10", dest='dataset')
+		self.parser.add_option('--dataset', type='string', default="celebA", dest='dataset')
 
 
 	def initialize(self):
@@ -49,18 +49,9 @@ class Fader():
 		self.batch_size = opt.batch_size
 		self.dataset = opt.dataset
 
-		if(self.dataset == 'cifar-10'):
-			self.img_width = 32
-			self.img_height = 32
-			self.img_depth = 3
-		elif(self.dataset == 'Imagenet'):
-			self.img_width = 256
-			self.img_height = 256
-			self.img_depth = 3
-		else :
-			self.img_width = opt.img_width
-			self.img_height = opt.img_height
-			self.img_depth = opt.img_depth
+		self.img_width = opt.img_width
+		self.img_height = opt.img_height
+		self.img_depth = opt.img_depth
 
 		self.img_size = self.img_width*self.img_height*self.img_depth
 		self.num_attr = opt.num_attr
@@ -139,7 +130,13 @@ class Fader():
 
 		with tf.variable_scope(name) as scope:
 
-			return 1
+			o_disc1 = general_conv2d(input_disc, 512, name="C512")
+			size_disc = o_disc1.get_shape().as_list()
+			o_flat = tf.reshape(o_disc1,[self.batch_size, 512])
+			o_disc2 = linear1d(o_flat, 512, 512)
+			o_disc3 = linear1d(o_disc2, 512, self.num_attr)
+
+			return o_disc3
 
 
 
