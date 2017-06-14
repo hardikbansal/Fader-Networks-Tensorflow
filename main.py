@@ -109,18 +109,33 @@ class Fader():
 
 		with tf.variable_scope(name) as scope:
 
-			o_d1 = general_deconv2d(input_dec, 512, name="D512_2")
-			# tf.concat([o_d1, attr], 3)
+			attr_1 = tf.stack([attr]*4)
+			o_d0 = tf.concat([input_dec, tf.reshape(tf.transpose(attr_1,[1, 0, 2]),[-1, 2, 2, 10])], 3)
+			o_d1 = general_deconv2d(o_d0, 512, name="D512_2")
+			
+			attr_2 = tf.transpose(tf.stack([attr]*16),[1, 0, 2])
+			o_d1 = tf.concat([o_d1, tf.reshape(tf.transpose(attr_2,[1, 0, 2]),[-1, 4, 4, 10])], 3)			
 			o_d2 = general_deconv2d(o_d1, 256, name="D512_1")
-			# tf.concat([o_d2, attr], 3)
+			
+			attr_3 = tf.transpose(tf.stack([attr]*64),[1, 0, 2])
+			o_d2 = tf.concat([o_d2, tf.reshape(tf.transpose(attr_3,[1, 0, 2]),[-1, 8, 8, 10])], 3)
 			o_d3 = general_deconv2d(o_d2, 128, name="D256")
-			# tf.concat([o_d3, attr], 3)
+			
+			attr_4 = tf.transpose(tf.stack([attr]*256),[1, 0, 2])
+			o_d3 = tf.concat([o_d3, tf.reshape(tf.transpose(attr_4,[1, 0, 2]),[-1, 16, 16, 10])], 3)
 			o_d4 = general_deconv2d(o_d3, 64, name="D128")
-			# tf.concat([o_d4, attr], 3)
+			
+			attr_5 = tf.transpose(tf.stack([attr]*1024),[1, 0, 2])
+			o_d4 = tf.concat([o_d4, tf.reshape(tf.transpose(attr_5,[1, 0, 2]),[-1, 32, 32, 10])], 3)
 			o_d5 = general_deconv2d(o_d4, 32, name="D64")
-			# tf.concat([o_d5, attr], 3)
+			
+			attr_6 = tf.transpose(tf.stack([attr]*4096),[1, 0, 2])
+			o_d5 = tf.concat([o_d5, tf.reshape(tf.transpose(attr_6,[1, 0, 2]),[-1, 64, 64, 10])], 3)
 			o_d6 = general_deconv2d(o_d5, 16, name="D32")
-			# tf.concat([o_d6, attr], 3)
+			
+
+			attr_7 = tf.transpose(tf.stack([attr]*16384),[1, 0, 2])
+			o_d6 = tf.concat([o_d6, tf.reshape(tf.transpose(attr_7,[1, 0, 2]),[-1, 128, 128, 10])], 3)
 			o_d7 = general_deconv2d(o_d6, 3, name="D16")
 
 			return o_d7
@@ -142,10 +157,10 @@ class Fader():
 	def celeb_model_setup(self):
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, self.img_height, self.img_width, self.num_attr])
+		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, self.num_attr])
 
 		self.o_enc = self.encoder(self.input_imgs)
-		print(self.o_enc.get_shape().as_list())
+		# print(self.o_enc.get_shape().as_list())
 		self.o_dec = self.decoder(self.o_enc, tf.cast(self.input_attr, tf.float32))
 		self.o_disc = self.discriminator(self.o_enc)
 
