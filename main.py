@@ -25,8 +25,8 @@ class Fader():
 
 		self.parser.add_option('--num_iter', type='int', default=1000, dest='num_iter')
 		self.parser.add_option('--batch_size', type='int', default=32, dest='batch_size')
-		self.parser.add_option('--img_width', type='int', default=32, dest='img_width')
-		self.parser.add_option('--img_height', type='int', default=32, dest='img_height')
+		self.parser.add_option('--img_width', type='int', default=256, dest='img_width')
+		self.parser.add_option('--img_height', type='int', default=256, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
 		self.parser.add_option('--num_attr', type='int', default=10, dest='num_attr')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
@@ -110,17 +110,17 @@ class Fader():
 		with tf.variable_scope(name) as scope:
 
 			o_d1 = general_deconv2d(input_dec, 512, name="D512_2")
-			tf.concat(o_d1, attr, 3)
+			# tf.concat([o_d1, attr], 3)
 			o_d2 = general_deconv2d(o_d1, 256, name="D512_1")
-			tf.concat(o_d2, attr, 3)
+			# tf.concat([o_d2, attr], 3)
 			o_d3 = general_deconv2d(o_d2, 128, name="D256")
-			tf.concat(o_d3, attr, 3)
+			# tf.concat([o_d3, attr], 3)
 			o_d4 = general_deconv2d(o_d3, 64, name="D128")
-			tf.concat(o_d4, attr, 3)
+			# tf.concat([o_d4, attr], 3)
 			o_d5 = general_deconv2d(o_d4, 32, name="D64")
-			tf.concat(o_d5, attr, 3)
+			# tf.concat([o_d5, attr], 3)
 			o_d6 = general_deconv2d(o_d5, 16, name="D32")
-			tf.concat(o_d6, attr, 3)
+			# tf.concat([o_d6, attr], 3)
 			o_d7 = general_deconv2d(o_d6, 3, name="D16")
 
 			return o_d7
@@ -133,8 +133,8 @@ class Fader():
 			o_disc1 = general_conv2d(input_disc, 512, name="C512")
 			size_disc = o_disc1.get_shape().as_list()
 			o_flat = tf.reshape(o_disc1,[self.batch_size, 512])
-			o_disc2 = linear1d(o_flat, 512, 512)
-			o_disc3 = linear1d(o_disc2, 512, self.num_attr)
+			o_disc2 = linear1d(o_flat, 512, 512, name="fc1")
+			o_disc3 = linear1d(o_disc2, 512, self.num_attr, name="fc2")
 
 			return o_disc3
 			
@@ -142,11 +142,12 @@ class Fader():
 	def celeb_model_setup(self):
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, 1, 1, self.num_attr])
+		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, self.img_height, self.img_width, self.num_attr])
 
 		self.o_enc = self.encoder(self.input_imgs)
-		self.o_dec = slef.decoder(o_enc, self.input_attr)
-		self.o_disc = self.discriminator(o_enc)
+		print(self.o_enc.get_shape().as_list())
+		self.o_dec = self.decoder(self.o_enc, tf.cast(self.input_attr, tf.float32))
+		self.o_disc = self.discriminator(self.o_enc)
 
 
 	def model_setup(self):
@@ -174,10 +175,15 @@ class Fader():
 
 		self.img_loss = self.generation_loss( self.input_imgs, self.o_dec)
 
+		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
+		self.loss_optimizer = optimizer.minimize(self.img_loss)
+
 	def train(self):
 
-		model_setup()
-		loss_setup()
+		self.model_setup()
+		self.loss_setup()
+
+		sys.exit()
 
 		init = tf.global_variables_initializer()
 		saver = tf.train.Saver()
@@ -214,9 +220,7 @@ def main():
 
 	model.load_dataset()
 
-	sys.exit()
-
-	if(model.to_test == True):
+	if(model.to_test):
 		model.test()
 	else:
 		model.train()
