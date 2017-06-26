@@ -196,13 +196,19 @@ class Fader():
 
 	def loss_setup(self):
 
-		self.img_loss = self.generation_loss(self.input_imgs, self.o_dec)
-		self.disc_loss = self.discriminator_loss(self.o_disc, self.input_attr)
-
-		self.tot_loss = tf.reduce_mean(self.img_loss + self.disc_loss)
+		self.img_loss = self.reduce_mean(self.generation_loss(self.input_imgs, self.o_dec))
+		self.enc_loss = self.reduce_mean(self.discriminator_loss(self.o_disc, 1-self.input_attr))
+		
+		self.disc_loss = self.reduce_mean(self.discriminator_loss(self.o_disc, self.input_attr))
+		self.enc_dec_loss = self.img_loss + self.enc_loss
 
 		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
-		self.loss_optimizer = optimizer.minimize(self.tot_loss)
+
+		enc_dec_vars = [var for var in self.model_vars if 'coder' in var.name]
+        disc_vars = [var for var in self.model_vars if 'Discriminator' in var.name]
+
+		self.enc_dec_loss_optimizer = optimizer.minimize(self.enc_dec_loss, var_list=enc_dec_vars)
+		self.disc_loss_optimizer = optimizer.minimize(self.disc_loss, var_list=disc_vars)
 
 	def train(self):
 
@@ -237,12 +243,17 @@ class Fader():
 					imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
-					_, temp_tot_loss, temp_img_loss, temp_discriminator_loss = sess.run(
-						[self.loss_optimizer, self.tot_loss, self.img_loss, self.discriminator_loss],
+					_, temp_tot_loss, temp_img_loss, temp_enc_loss = sess.run(
+						[self.enc_dec_loss_optimizer, self.enc_dec_loss, self.img_loss, self.enc_loss],
+						feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
+
+
+					_, temp_disc_loss = sess.run(
+						[self.disc_loss_optimizer, self.disc_loss],
 						feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
 
 					print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
-					 " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_discriminator_loss))
+					 " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_disc_loss))
 
 
 
