@@ -68,7 +68,7 @@ class Fader():
 
 	def load_dataset(self, mode='train'):
 
-		self.train_attr = np.zeros([self.num_images, self.num_attr], dtype=np.int32)
+		self.train_attr = np.zeros([self.num_images, self.num_attr], dtype=np.float32)
 
 		imageFolderPath = '../MenWomenDataset/img_align_celeba/img_align_celeba'
 		imagePath = glob.glob(imageFolderPath+'/*.jpg')
@@ -151,18 +151,21 @@ class Fader():
 			o_disc2 = linear1d(o_flat, 512, 512, name="fc1")
 			o_disc3 = linear1d(o_disc2, 512, self.num_attr, name="fc2")
 
-			return o_disc3
+			return tf.nn.sigmoid(o_disc3)
 			
 
 	def celeb_model_setup(self):
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-		self.input_attr = tf.placeholder(tf.int32, [self.batch_size, self.num_attr])
+		self.input_attr = tf.placeholder(tf.float32, [self.batch_size, self.num_attr])
 
-		self.o_enc = self.encoder(self.input_imgs)
-		# print(self.o_enc.get_shape().as_list())
-		self.o_dec = self.decoder(self.o_enc, tf.cast(self.input_attr, tf.float32))
-		self.o_disc = self.discriminator(self.o_enc)
+		with tf.variable_scope("Model") as scope:
+
+			self.o_enc = self.encoder(self.input_imgs)
+			self.o_dec = self.decoder(self.o_enc, tf.cast(self.input_attr, tf.float32))
+			self.o_disc = self.discriminator(self.o_enc)
+			# print(self.o_disc.get_shape())
+			# sys.exit()
 
 
 	def model_setup(self):
@@ -181,14 +184,25 @@ class Fader():
 	def generation_loss(self, input_img, output_img, loss_type='mse'):
 
 		if (loss_type == 'mse'):
-			return tf.reduce_sum(tf.squared_difference(input_img, output_img),1)
+			return tf.reduce_sum(tf.squared_difference(input_img, output_img), [1, 2, 3])
 		elif (loss_type == 'log_diff'):
 			epsilon = 1e-8
-			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),1)
+			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
+
+
+	def discriminator_loss(self, out_attr, inp_attr):
+
+		return tf.reduce_sum(tf.abs(out_attr-inp_attr),1)
 
 	def loss_setup(self):
 
-		self.img_loss = self.generation_loss( self.input_imgs, self.o_dec)
+		self.img_loss = self.generation_loss(self.input_imgs, self.o_dec)
+		self.disc_loss = self.discriminator_loss(self.o_disc, self.input_attr)
+
+		self.tot_loss = self.img_loss + self.disc_loss
+
+		print(self.tot_loss.get_shape())
+		sys.exit()
 
 		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
 		self.loss_optimizer = optimizer.minimize(self.img_loss)
