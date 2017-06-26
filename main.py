@@ -73,18 +73,21 @@ class Fader():
 		imageFolderPath = '../MenWomenDataset/img_align_celeba/img_align_celeba'
 		imagePath = glob.glob(imageFolderPath+'/*.jpg')
 
-		self.train_imgs = np.array( [np.array(Image.open(imagePath[i]), 'f') for i in range(500)] )
 
-		dictn = {}
+		dictn = []
 
+		count = 0
 		with open("../MenWomenDataset/list_attr_celeba.txt") as f:
 			for lines in f:
 				temp = lines
 				temp = temp.split()
-				dictn[temp[0]] = temp[1:]
+				dictn.append(temp[1:])
 
-		# print(self.train_imgs[0])
+		self.train_imgs = []
 
+		for i in range(500):
+			self.train_imgs.append( np.array(Image.open(imagePath[i]),'f') )
+			self.train_attr.append( np.array(dictn[i]) )
 
 
 	def normalize_input(self, imgs):
@@ -164,16 +167,13 @@ class Fader():
 			self.o_enc = self.encoder(self.input_imgs)
 			self.o_dec = self.decoder(self.o_enc, tf.cast(self.input_attr, tf.float32))
 			self.o_disc = self.discriminator(self.o_enc)
-			# print(self.o_disc.get_shape())
-			# sys.exit()
+			
 
 
 	def model_setup(self):
 
 		with tf.variable_scope("Model") as scope:
-
 			self.celeb_model_setup()
-			
 
 		self.model_vars = tf.trainable_variables()
 		for var in self.model_vars: print(var.name, var.get_shape())
@@ -199,13 +199,10 @@ class Fader():
 		self.img_loss = self.generation_loss(self.input_imgs, self.o_dec)
 		self.disc_loss = self.discriminator_loss(self.o_disc, self.input_attr)
 
-		self.tot_loss = self.img_loss + self.disc_loss
-
-		print(self.tot_loss.get_shape())
-		sys.exit()
+		self.tot_loss = tf.reduce_mean(self.img_loss + self.disc_loss)
 
 		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
-		self.loss_optimizer = optimizer.minimize(self.img_loss)
+		self.loss_optimizer = optimizer.minimize(self.tot_loss)
 
 	def train(self):
 
@@ -238,7 +235,14 @@ class Fader():
 				for itr in range(0, int(self.num_images/self.batch_size)):
 
 					imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
-					labels = self.train_labels[itr*self.batch_size:(itr+1)*(self.batch_size)]
+					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
+
+					_, temp_tot_loss, temp_img_loss, temp_discriminator_loss = sess.run(
+						[self.loss_optimizer, self.tot_loss, self.img_loss, self.discriminator_loss],
+						feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
+
+					print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
+					 " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_discriminator_loss))
 
 
 
