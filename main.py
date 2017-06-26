@@ -215,7 +215,10 @@ class Fader():
 		self.model_setup()
 		self.loss_setup()
 
-		sys.exit()
+		self.load_dataset()
+		self.normalize_input(self.input_imgs)
+
+		# sys.exit()
 
 		init = tf.global_variables_initializer()
 		saver = tf.train.Saver()
@@ -261,8 +264,6 @@ def main():
 
 	model = Fader()
 	model.initialize()
-
-	model.load_dataset()
 
 	if(model.to_test):
 		model.test()
