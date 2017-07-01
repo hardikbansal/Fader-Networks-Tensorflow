@@ -31,7 +31,7 @@ class Fader():
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
 		self.parser.add_option('--num_attr', type='int', default=40, dest='num_attr')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
-		self.parser.add_option('--num_images', type='int', default=50000, dest='num_images')
+		self.parser.add_option('--num_images', type='int', default=500, dest='num_images')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
 		self.parser.add_option('--steps', type='int', default=10, dest='steps')
 		self.parser.add_option('--enc_size', type='int', default=256, dest='enc_size')
@@ -66,6 +66,9 @@ class Fader():
 		self.check_dir = "./output/"+ self.model + "/" + self.dataset +"/checkpoints"
 		self.images_dir = "./output/" + self.model + "/" + self.dataset + "/imgs"
 
+	def normalize_input(self, imgs):
+		return imgs/127.5-1.0
+
 
 	def load_dataset(self, mode='train'):
 
@@ -86,15 +89,12 @@ class Fader():
 
 		self.train_imgs = []
 
-		for i in range(500):
-			self.train_imgs.append( imresize(np.array(Image.open(imagePath[i]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear"))
+		for i in range(self.num_images):
+			self.train_imgs.append( self.normalize_input(imresize(np.array(Image.open(imagePath[i]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
 			self.train_attr.append( np.array(dictn[i]) )
 
 
-	def normalize_input(self, imgs):
-
-		return imgs/127.5-1.0
-
+	
 	def encoder(self, input_enc, name="Encoder"):
 
 		with tf.variable_scope(name) as scope:
