@@ -13,6 +13,7 @@ from layers import *
 
 from tensorflow.examples.tutorials.mnist import input_data
 from scipy.misc import imsave
+from scipy.misc import imresize
 from PIL import Image
 from tqdm import tqdm
 
@@ -28,7 +29,7 @@ class Fader():
 		self.parser.add_option('--img_width', type='int', default=256, dest='img_width')
 		self.parser.add_option('--img_height', type='int', default=256, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
-		self.parser.add_option('--num_attr', type='int', default=10, dest='num_attr')
+		self.parser.add_option('--num_attr', type='int', default=40, dest='num_attr')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
 		self.parser.add_option('--num_images', type='int', default=50000, dest='num_images')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
@@ -68,7 +69,7 @@ class Fader():
 
 	def load_dataset(self, mode='train'):
 
-		self.train_attr = np.zeros([self.num_images, self.num_attr], dtype=np.float32)
+		self.train_attr = []
 
 		imageFolderPath = '../MenWomenDataset/img_align_celeba/img_align_celeba'
 		imagePath = glob.glob(imageFolderPath+'/*.jpg')
@@ -86,7 +87,7 @@ class Fader():
 		self.train_imgs = []
 
 		for i in range(500):
-			self.train_imgs.append( np.array(Image.open(imagePath[i]),'f') )
+			self.train_imgs.append( imresize(np.array(Image.open(imagePath[i]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear"))
 			self.train_attr.append( np.array(dictn[i]) )
 
 
@@ -113,32 +114,32 @@ class Fader():
 		with tf.variable_scope(name) as scope:
 
 			attr_1 = tf.stack([attr]*4)
-			o_d0 = tf.concat([input_dec, tf.reshape(tf.transpose(attr_1,[1, 0, 2]),[-1, 2, 2, 10])], 3)
+			o_d0 = tf.concat([input_dec, tf.reshape(tf.transpose(attr_1,[1, 0, 2]),[-1, 2, 2, 40])], 3)
 			o_d1 = general_deconv2d(o_d0, 512, name="D512_2")
 			
 			attr_2 = tf.transpose(tf.stack([attr]*16),[1, 0, 2])
-			o_d1 = tf.concat([o_d1, tf.reshape(tf.transpose(attr_2,[1, 0, 2]),[-1, 4, 4, 10])], 3)			
+			o_d1 = tf.concat([o_d1, tf.reshape(tf.transpose(attr_2,[1, 0, 2]),[-1, 4, 4, 40])], 3)			
 			o_d2 = general_deconv2d(o_d1, 256, name="D512_1")
 			
 			attr_3 = tf.transpose(tf.stack([attr]*64),[1, 0, 2])
-			o_d2 = tf.concat([o_d2, tf.reshape(tf.transpose(attr_3,[1, 0, 2]),[-1, 8, 8, 10])], 3)
+			o_d2 = tf.concat([o_d2, tf.reshape(tf.transpose(attr_3,[1, 0, 2]),[-1, 8, 8, 40])], 3)
 			o_d3 = general_deconv2d(o_d2, 128, name="D256")
 			
 			attr_4 = tf.transpose(tf.stack([attr]*256),[1, 0, 2])
-			o_d3 = tf.concat([o_d3, tf.reshape(tf.transpose(attr_4,[1, 0, 2]),[-1, 16, 16, 10])], 3)
+			o_d3 = tf.concat([o_d3, tf.reshape(tf.transpose(attr_4,[1, 0, 2]),[-1, 16, 16, 40])], 3)
 			o_d4 = general_deconv2d(o_d3, 64, name="D128")
 			
 			attr_5 = tf.transpose(tf.stack([attr]*1024),[1, 0, 2])
-			o_d4 = tf.concat([o_d4, tf.reshape(tf.transpose(attr_5,[1, 0, 2]),[-1, 32, 32, 10])], 3)
+			o_d4 = tf.concat([o_d4, tf.reshape(tf.transpose(attr_5,[1, 0, 2]),[-1, 32, 32, 40])], 3)
 			o_d5 = general_deconv2d(o_d4, 32, name="D64")
 			
 			attr_6 = tf.transpose(tf.stack([attr]*4096),[1, 0, 2])
-			o_d5 = tf.concat([o_d5, tf.reshape(tf.transpose(attr_6,[1, 0, 2]),[-1, 64, 64, 10])], 3)
+			o_d5 = tf.concat([o_d5, tf.reshape(tf.transpose(attr_6,[1, 0, 2]),[-1, 64, 64, 40])], 3)
 			o_d6 = general_deconv2d(o_d5, 16, name="D32")
 			
 
 			attr_7 = tf.transpose(tf.stack([attr]*16384),[1, 0, 2])
-			o_d6 = tf.concat([o_d6, tf.reshape(tf.transpose(attr_7,[1, 0, 2]),[-1, 128, 128, 10])], 3)
+			o_d6 = tf.concat([o_d6, tf.reshape(tf.transpose(attr_7,[1, 0, 2]),[-1, 128, 128, 40])], 3)
 			o_d7 = general_deconv2d(o_d6, 3, name="D16")
 
 			return o_d7
@@ -243,7 +244,7 @@ class Fader():
 
 				for itr in range(0, int(self.num_images/self.batch_size)):
 
-					imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
+					imgs = self.train_imgs[itr*self.batch_size:(itr+1)*(self.batch_size)]
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
 					_, temp_tot_loss, temp_img_loss, temp_enc_loss = sess.run(
