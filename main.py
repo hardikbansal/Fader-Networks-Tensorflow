@@ -75,7 +75,7 @@ class Fader():
 		self.train_attr = []
 
 		imageFolderPath = '../MenWomenDataset/img_align_celeba/img_align_celeba'
-		imagePath = glob.glob(imageFolderPath+'/*.jpg')
+		self.imagePath = glob.glob(imageFolderPath+'/*.jpg')
 
 
 		dictn = []
@@ -87,12 +87,20 @@ class Fader():
 				temp = temp.split()
 				dictn.append(temp[1:])
 
-		self.train_imgs = []
-
 		for i in range(self.num_images):
-			self.train_imgs.append( self.normalize_input(imresize(np.array(Image.open(imagePath[i]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
-			self.train_attr.append( np.array(dictn[i]) )
+			self.train_attr.append(np.array(dictn[i]))
 
+		# self.train_imgs = []
+
+		# for i in range(self.num_images):
+			# self.train_imgs.append( self.normalize_input(imresize(np.array(Image.open(imagePath[i]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
+		# 	self.train_attr.append( np.array(dictn[i]) )
+	
+	def load_batch(self, batch_num, batch_sz):
+		temp = []
+		for i in range(batch_sz):
+			temp.append(self.normalize_input(imresize(np.array(Image.open(imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
+		return temp
 
 	
 	def encoder(self, input_enc, name="Encoder"):
@@ -244,7 +252,7 @@ class Fader():
 
 				for itr in range(0, int(self.num_images/self.batch_size)):
 
-					imgs = self.train_imgs[itr*self.batch_size:(itr+1)*(self.batch_size)]
+					imgs = self.load_batch(itr, self.batch_size)
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
 					_, temp_tot_loss, temp_img_loss, temp_enc_loss = sess.run(
