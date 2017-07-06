@@ -99,7 +99,7 @@ class Fader():
 	def load_batch(self, batch_num, batch_sz):
 		temp = []
 		for i in range(batch_sz):
-			temp.append(self.normalize_input(imresize(np.array(Image.open(imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
+			temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
 		return temp
 
 	
