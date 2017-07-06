@@ -209,9 +209,9 @@ class Fader():
 		self.enc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, 1-self.input_attr))
 		
 		self.disc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, self.input_attr))
-		self.enc_dec_loss = self.img_loss + self.enc_loss
+		self.enc_dec_loss = self.img_loss + 0.0001*self.enc_loss
 
-		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
+		optimizer = tf.train.AdamOptimizer(0.002, beta1=0.5)
 
 		enc_dec_vars = [var for var in self.model_vars if 'coder' in var.name]
 		disc_vars = [var for var in self.model_vars if 'Discriminator' in var.name]
@@ -225,7 +225,6 @@ class Fader():
 		self.loss_setup()
 
 		self.load_dataset()
-		self.normalize_input(self.input_imgs)
 
 		# sys.exit()
 
@@ -266,6 +265,32 @@ class Fader():
 
 					print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
 					 " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_disc_loss))
+
+	def test(self):
+
+		self.model_setup()
+		self.load_dataset()
+
+		if not os.path.exists(self.images_dir+"/test/"):
+			os.makedirs(self.images_dir+"/test/")
+		if not os.path.exists(self.check_dir):
+			os.makedirs(self.check_dir)
+
+
+		chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
+		saver.restore(sess,chkpt_fname)
+
+		with tf.Session() as sess:
+
+			sess.run(init)
+
+			for itr in range(0, int(self.num_test_images/self.batch_size)):
+
+				imgs = self.load_batch(itr, self.batch_size)
+				attrs = self.test_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
+
+				temp_output = sess.run([self.o_dec], feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
+
 
 
 
