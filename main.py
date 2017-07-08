@@ -39,6 +39,7 @@ class Fader():
 		self.parser.add_option('--dec_size', type='int', default=256, dest='dec_size')
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
 		self.parser.add_option('--dataset', type='string', default="celebA", dest='dataset')
+		self.parser.add_option('--dataset_dir', type='string', default="../datasets/img_align_celeba", dest='dataset')
 
 
 	def initialize(self):
@@ -63,6 +64,7 @@ class Fader():
 		self.to_test = opt.test
 		self.load_checkpoint = False
 		self.do_setup = True
+		self.dataset_dir = opt.dataset_dir
 
 		self.tensorboard_dir = "./output/" + self.model + "/" + self.dataset + "/tensorboard"
 		self.check_dir = "./output/"+ self.model + "/" + self.dataset +"/checkpoints"
@@ -76,14 +78,14 @@ class Fader():
 
 		self.train_attr = []
 
-		imageFolderPath = '../MenWomenDataset/img_align_celeba/img_align_celeba'
+		imageFolderPath = self.dataset_dir
 		self.imagePath = glob.glob(imageFolderPath+'/*.jpg')
 
 
 		dictn = []
 
 		count = 0
-		with open("../MenWomenDataset/list_attr_celeba.txt") as f:
+		with open(self.dataset_dir+"/list_attr_celeba.txt") as f:
 			for lines in f:
 				temp = lines
 				temp = temp.split()
@@ -244,7 +246,7 @@ class Fader():
 				saver.restore(sess,chkpt_fname)
 
 			for epoch in range(0, self.max_epoch):
-				
+
 				for itr in range(0, int(self.num_train_images/self.batch_size)):
 
 					temp_lmd = 0.0001*(epoch*self.batch_size + itr)/(self.batch_size*self.max_epoch)
@@ -276,7 +278,7 @@ class Fader():
 
 
 		chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
-		saver.restore(sess,chkpt_fname)
+		saver.restore(sess, chkpt_fname)
 
 		with tf.Session() as sess:
 
