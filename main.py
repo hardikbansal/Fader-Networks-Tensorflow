@@ -31,7 +31,8 @@ class Fader():
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
 		self.parser.add_option('--num_attr', type='int', default=40, dest='num_attr')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
-		self.parser.add_option('--num_images', type='int', default=500, dest='num_images')
+		self.parser.add_option('--num_train_images', type='int', default=500, dest='num_train_images')
+		self.parser.add_option('--num_test_images', type='int', default=500, dest='num_test_images')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
 		self.parser.add_option('--steps', type='int', default=10, dest='steps')
 		self.parser.add_option('--enc_size', type='int', default=256, dest='enc_size')
@@ -56,7 +57,8 @@ class Fader():
 
 		self.img_size = self.img_width*self.img_height*self.img_depth
 		self.num_attr = opt.num_attr
-		self.num_images = opt.num_images
+		self.num_train_images = opt.num_train_images
+		self.num_test_images = opt.num_test_images
 		self.model = "Fader"
 		self.to_test = opt.test
 		self.load_checkpoint = False
@@ -87,14 +89,9 @@ class Fader():
 				temp = temp.split()
 				dictn.append(temp[1:])
 
-		for i in range(self.num_images):
+		for i in range(self.num_train_images):
 			self.train_attr.append(np.array(dictn[i]))
 
-		# self.train_imgs = []
-
-		# for i in range(self.num_images):
-			# self.train_imgs.append( self.normalize_input(imresize(np.array(Image.open(imagePath[i]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
-		# 	self.train_attr.append( np.array(dictn[i]) )
 	
 	def load_batch(self, batch_num, batch_sz):
 		temp = []
@@ -102,6 +99,18 @@ class Fader():
 			temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
 		return temp
 
+	def generation_loss(self, input_img, output_img, loss_type='mse'):
+
+		if (loss_type == 'mse'):
+			return tf.reduce_sum(tf.squared_difference(input_img, output_img), [1, 2, 3])
+		elif (loss_type == 'log_diff'):
+			epsilon = 1e-8
+			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
+
+
+	def discriminator_loss(self, out_attr, inp_attr):
+
+		return tf.reduce_sum(tf.abs(out_attr-inp_attr),1)
 	
 	def encoder(self, input_enc, name="Encoder"):
 
@@ -170,11 +179,12 @@ class Fader():
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
 		self.input_attr = tf.placeholder(tf.float32, [self.batch_size, self.num_attr])
+		self.lmda = tf.placeholder(tf.float32,[1])
 
 		with tf.variable_scope("Model") as scope:
 
 			self.o_enc = self.encoder(self.input_imgs)
-			self.o_dec = self.decoder(self.o_enc, tf.cast(self.input_attr, tf.float32))
+			self.o_dec = self.decoder(self.o_enc, self.input_attr)
 			self.o_disc = self.discriminator(self.o_enc)
 			
 
@@ -189,27 +199,13 @@ class Fader():
 
 		self.do_setup = False
 
-
-	def generation_loss(self, input_img, output_img, loss_type='mse'):
-
-		if (loss_type == 'mse'):
-			return tf.reduce_sum(tf.squared_difference(input_img, output_img), [1, 2, 3])
-		elif (loss_type == 'log_diff'):
-			epsilon = 1e-8
-			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
-
-
-	def discriminator_loss(self, out_attr, inp_attr):
-
-		return tf.reduce_sum(tf.abs(out_attr-inp_attr),1)
-
 	def loss_setup(self):
 
 		self.img_loss = tf.reduce_mean(self.generation_loss(self.input_imgs, self.o_dec))
 		self.enc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, 1-self.input_attr))
 		
 		self.disc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, self.input_attr))
-		self.enc_dec_loss = self.img_loss + 0.0001*self.enc_loss
+		self.enc_dec_loss = self.img_loss + self.lmda*self.enc_loss
 
 		optimizer = tf.train.AdamOptimizer(0.002, beta1=0.5)
 
@@ -248,20 +244,22 @@ class Fader():
 				saver.restore(sess,chkpt_fname)
 
 			for epoch in range(0, self.max_epoch):
+				
+				for itr in range(0, int(self.num_train_images/self.batch_size)):
 
-				for itr in range(0, int(self.num_images/self.batch_size)):
+					temp_lmd = 0.0001*(epoch*self.batch_size + itr)/(self.batch_size*self.max_epoch)
 
 					imgs = self.load_batch(itr, self.batch_size)
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
 					_, temp_tot_loss, temp_img_loss, temp_enc_loss = sess.run(
 						[self.enc_dec_loss_optimizer, self.enc_dec_loss, self.img_loss, self.enc_loss],
-						feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
+						feed_dict={self.input_imgs:imgs, self.input_attr:attrs, self.lmda:temp_lmd})
 
 
 					_, temp_disc_loss = sess.run(
 						[self.disc_loss_optimizer, self.disc_loss],
-						feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
+						feed_dict={self.input_imgs:imgs, self.input_attr:attrs, self.lmda:temp_lmd})
 
 					print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
 					 " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_disc_loss))
