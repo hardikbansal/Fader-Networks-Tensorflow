@@ -32,7 +32,7 @@ class Fader():
 		self.parser.add_option('--num_attr', type='int', default=40, dest='num_attr')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
 		self.parser.add_option('--num_train_images', type='int', default=500, dest='num_train_images')
-		self.parser.add_option('--num_test_images', type='int', default=500, dest='num_test_images')
+		self.parser.add_option('--num_test_images', type='int', default=50, dest='num_test_images')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
 		self.parser.add_option('--steps', type='int', default=10, dest='steps')
 		self.parser.add_option('--enc_size', type='int', default=256, dest='enc_size')
@@ -40,6 +40,7 @@ class Fader():
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
 		self.parser.add_option('--dataset', type='string', default="celebA", dest='dataset')
 		self.parser.add_option('--dataset_dir', type='string', default="../datasets/img_align_celeba", dest='dataset_dir')
+		self.parser.add_option('--test_dataset_dir', type='string', default="../datasets/img_align_celeba", dest='test_dataset_dir')
 
 
 	def initialize(self):
@@ -76,30 +77,59 @@ class Fader():
 
 	def load_dataset(self, mode='train'):
 
-		self.train_attr = []
+		if(mode == "train"):
 
-		imageFolderPath = self.dataset_dir
-		self.imagePath = glob.glob(imageFolderPath+'/*.jpg')
+			self.train_attr = []
+
+			imageFolderPath = self.dataset_dir
+			self.imagePath = glob.glob(imageFolderPath+'/*.jpg')
 
 
-		dictn = []
+			dictn = []
 
-		count = 0
-		with open(self.dataset_dir+"/list_attr_celeba.txt") as f:
-			for lines in f:
-				temp = lines
-				temp = temp.split()
-				dictn.append(temp[1:])
+			count = 0
+			with open(self.dataset_dir+"/train_attr.txt") as f:
+				for lines in f:
+					temp = lines
+					temp = temp.split()
+					dictn.append(temp[1:])
 
-		for i in range(self.num_train_images):
-			self.train_attr.append(np.array(dictn[i]))
+			for i in range(self.num_train_images):
+				self.train_attr.append(np.array(dictn[i]))
+
+		elif (mode == "test"):
+
+			self.test_attr = []
+
+			imageFolderPath = self.test_dataset_dir
+			self.imagePath = glob.glob(imageFolderPath+'/*.jpg')
+
+			dictn = []
+
+			count = 0
+			with open(self.dataset_dir+"/test_attr.txt") as f:
+				for lines in f:
+					temp = lines
+					temp = temp.split()
+					dictn.append(temp[1:])
+
+			for i in range(self.num_test_images):
+				self.test_attr.append(np.array(dictn[i]))
 
 	
-	def load_batch(self, batch_num, batch_sz):
-		temp = []
-		for i in range(batch_sz):
-			temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
-		return temp
+	def load_batch(self, batch_num, batch_sz, mode="train"):
+
+		if(mode == "train"):
+			temp = []
+			for i in range(batch_sz):
+				temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
+			return temp
+
+		elif (mode == "test"):
+			temp = []
+			for i in range(batch_sz):
+				temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
+			return temp
 
 	def generation_loss(self, input_img, output_img, loss_type='mse'):
 
@@ -271,7 +301,7 @@ class Fader():
 	def test(self):
 
 		self.model_setup()
-		self.load_dataset()
+		self.load_dataset(mode="test")
 
 		if not os.path.exists(self.images_dir+"/test/"):
 			os.makedirs(self.images_dir+"/test/")
@@ -279,14 +309,15 @@ class Fader():
 			os.makedirs(self.check_dir)
 
 
-		chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
-		saver.restore(sess, chkpt_fname)
 
 		with tf.Session() as sess:
 
+			chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
+			saver.restore(sess, chkpt_fname)
+
 			for itr in range(0, int(self.num_test_images/self.batch_size)):
 
-				imgs = self.load_batch(itr, self.batch_size)
+				imgs = self.load_batch(itr, self.batch_size, mode="test")
 				attrs = self.test_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
 				temp_output = sess.run([self.o_dec], feed_dict={self.input_imgs:imgs, self.input_attr:attrs})
