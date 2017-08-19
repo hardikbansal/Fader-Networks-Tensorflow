@@ -142,7 +142,7 @@ class Fader():
 
 	def discriminator_loss(self, out_attr, inp_attr):
 
-		return tf.reduce_sum(tf.abs(out_attr-inp_attr),1)
+		return -tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr)),1)
 	
 	def encoder(self, input_enc, name="Encoder"):
 
