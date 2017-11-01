@@ -10,9 +10,10 @@ In the model, they have designed an Encoder such that given an input and image X
 
 Picture below, depicts the architecture in the best way.
 
-<p align="center"><img src="./images/model.png" alt="model"></p>
+<p align="center"> <img src="./images/model.PNG"> </p>
 
 
-It looks like a GAN-like architecture where Encoder tries to output an embedding, such that discriminator cannot guess what actual attributes of the images are, while we train the Discriminator such that it tries to guess the architecture even from the embedding. So, it acts like a two player game where performance of each will complement the performance of other in training. In the end, we will get a good encoder that can be used to create embedding from image X which is not dependent on its features. After, this we will have the decoder, which we will simple use to get the image back, give embedding and the new attributes. For training, we will feed the same attribute Y and will try to get the original image back.
+It looks like a GAN-like architecture where Encoder tries to output an embedding X_emb , such that discriminator cannot guess what actual attributes of the images are, and at the same time, we train the Discriminator such that it tries to guess the attributes of image X even from the embedding X_emb. So, it acts like a two player game where performance of each will complement the performance of other in training. In the end, we will get a good encoder that can be used to create embedding from image X which is not dependent on its features. 
+After this, we will have the decoder, which we will simply use to get the image back, given embedding and the new attributes for the output image. For training, we will feed the same attribute Y and will try to get the original image back.
 
 Whole model will act as auto encoder with a mix of GANs.
