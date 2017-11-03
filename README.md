@@ -10,7 +10,13 @@ In the model, they have designed an Encoder such that given an input and image X
 
 Picture below, depicts the architecture in the best way.
 
-<p align="center"> <img src="./images/model.PNG"> </p>
+<p align="center"> 
+  <img src="./images/model.PNG">
+</p>
+
+<p align="center"> 
+  <i> Image from original <a href="https://arxiv.org/pdf/1706.00409.pdf"> paper </a>   </i>
+</p>
 
 
 It looks like a GAN-like architecture where Encoder tries to output an embedding X_emb , such that discriminator cannot guess what actual attributes of the images are, and at the same time, we train the Discriminator such that it tries to guess the attributes of image X even from the embedding X_emb. So, it acts like a two player game where performance of each will complement the performance of other in training. In the end, we will get a good encoder that can be used to create embedding from image X which is not dependent on its features. 
