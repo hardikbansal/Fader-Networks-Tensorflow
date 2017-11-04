@@ -243,15 +243,15 @@ class Fader():
 
 	def discriminator_loss(self, out_attr, inp_attr):
 
-		return -tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr)),1)
-		
+		return tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr)),1)
+
 	def loss_setup(self):
 
 		self.img_loss = tf.reduce_mean(self.generation_loss(self.input_imgs, self.o_dec))
-		self.enc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, 1-self.input_attr))
+		self.enc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, self.input_attr))
 		
-		self.disc_loss = tf.reduce_mean(self.discriminator_loss(self.o_disc, self.input_attr))
-		self.enc_dec_loss = self.img_loss + self.lmda*self.enc_loss
+		self.disc_loss = -tf.reduce_mean(self.discriminator_loss(self.o_disc, 1-self.input_attr))
+		self.enc_dec_loss = self.img_loss - self.lmda*self.enc_loss
 
 		optimizer = tf.train.AdamOptimizer(0.002, beta1=0.5)
 
@@ -260,8 +260,6 @@ class Fader():
 
 		self.enc_dec_loss_optimizer = optimizer.minimize(self.enc_dec_loss, var_list=enc_dec_vars)
 		self.disc_loss_optimizer = optimizer.minimize(self.disc_loss, var_list=disc_vars)
-
-
 	
 
 	def train(self):
