@@ -77,12 +77,12 @@ class Fader():
 
 	def transform_attr(self, attr):
 
-		temp_shape = attr.shape
+		temp_shape = len(attr)
 
-		final_attr = np.zeros([temp_shape[0], 2*temp_shape[1]])
+		final_attr = np.zeros([temp_shape, 2*self.num_attr])
 
-		for i in range(0, temp_shape[0]):
-			for j in range(0, temp_shape[1]):
+		for i in range(0, temp_shape):
+			for j in range(0, self.num_attr):
 				final_attr[i][2*j+attr[i][j]] = 1
 
 		return final_attr
@@ -107,9 +107,10 @@ class Fader():
 					dictn.append(temp[1:])
 
 			for i in range(self.num_train_images):
-				self.train_attr.append(np.array(dictn[i]))
+				self.train_attr.append(((np.array(dictn[i]).astype(np.int32))+1/2).astype(np.int32))
 
 			self.train_attr_1h = self.transform_attr(self.train_attr)
+			# print(self.train_attr[0:10])
 
 		elif (mode == "test"):
 
@@ -266,10 +267,8 @@ class Fader():
 
 		self.model_setup()
 		self.loss_setup()
-		
-		sys.exit()
-
 		self.load_dataset()
+
 
 		init = tf.global_variables_initializer()
 		saver = tf.train.Saver()
@@ -294,22 +293,28 @@ class Fader():
 
 				for itr in range(0, int(self.num_train_images/self.batch_size)):
 
+					# print(time.time())
+
 					temp_lmd = 0.0001*(epoch*self.batch_size + itr)/(self.batch_size*self.max_epoch)
 
 					imgs = self.load_batch(itr, self.batch_size)
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
+					attrs_1h = self.train_attr_1h[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
 					_, temp_tot_loss, temp_img_loss, temp_enc_loss = sess.run(
 						[self.enc_dec_loss_optimizer, self.enc_dec_loss, self.img_loss, self.enc_loss],
-						feed_dict={self.input_imgs:imgs, self.input_attr:attrs, self.lmda:temp_lmd})
+						feed_dict={self.input_imgs:imgs, self.input_attr_1h:attrs_1h, self.input_attr:attrs, self.lmda:[temp_lmd]})
 
 
 					_, temp_disc_loss = sess.run(
 						[self.disc_loss_optimizer, self.disc_loss],
-						feed_dict={self.input_imgs:imgs, self.input_attr:attrs, self.lmda:temp_lmd})
+						feed_dict={self.input_imgs:imgs, self.input_attr_1h:attrs_1h, self.input_attr:attrs, self.lmda:[temp_lmd]})
 
-					print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
-					 " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_disc_loss))
+					# print(time.time())
+
+					# sys.exit()
+				# print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
+				#  " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_disc_loss))
 
 				saver.save(sess,os.path.join(check_dir,"Fader"),global_step=epoch)
 
