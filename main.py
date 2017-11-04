@@ -75,6 +75,19 @@ class Fader():
 		return imgs/127.5-1.0
 
 
+	def transform_attr(self, attr):
+
+		temp_shape = attr.shape
+
+		final_attr = np.zeros([temp_shape[0], 2*temp_shape[1]])
+
+		for i in range(0, temp_shape[0]):
+			for j in range(0, temp_shape[1]):
+				final_attr[i][2*j+attr[i][j]] = 1
+
+		return final_attr
+
+
 	def load_dataset(self, mode='train'):
 
 		if(mode == "train"):
@@ -83,7 +96,6 @@ class Fader():
 
 			imageFolderPath = self.dataset_dir
 			self.imagePath = glob.glob(imageFolderPath+'/*.jpg')
-
 
 			dictn = []
 
@@ -96,6 +108,8 @@ class Fader():
 
 			for i in range(self.num_train_images):
 				self.train_attr.append(np.array(dictn[i]))
+
+			self.train_attr_1h = self.transform_attr(self.train_attr)
 
 		elif (mode == "test"):
 
@@ -131,18 +145,6 @@ class Fader():
 				temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
 			return temp
 
-	def generation_loss(self, input_img, output_img, loss_type='mse'):
-
-		if (loss_type == 'mse'):
-			return tf.reduce_sum(tf.squared_difference(input_img, output_img), [1, 2, 3])
-		elif (loss_type == 'log_diff'):
-			epsilon = 1e-8
-			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
-
-
-	def discriminator_loss(self, out_attr, inp_attr):
-
-		return -tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr)),1)
 	
 	def encoder(self, input_enc, name="Encoder"):
 
@@ -156,39 +158,39 @@ class Fader():
 			o_c6 = general_conv2d(o_c5, 512, name="C512_1")
 			o_c7 = general_conv2d(o_c6, 512, name="C512_2")
 
+
 			return o_c7
 
 	def decoder(self, input_dec, attr, name="Decoder"):
 
 		with tf.variable_scope(name) as scope:
 
-			attr_1 = tf.stack([attr]*4)
-			o_d0 = tf.concat([input_dec, tf.reshape(tf.transpose(attr_1,[1, 0, 2]),[-1, 2, 2, 40])], 3)
+			attr_1 = tf.transpose(tf.stack([attr]*4),[1, 0, 2])
+			o_d0 = tf.concat([input_dec, tf.reshape(attr_1,[-1, 2, 2, 2*self.num_attr])], 3)
 			o_d1 = general_deconv2d(o_d0, 512, name="D512_2")
-			
-			attr_2 = tf.transpose(tf.stack([attr]*16),[1, 0, 2])
-			o_d1 = tf.concat([o_d1, tf.reshape(tf.transpose(attr_2,[1, 0, 2]),[-1, 4, 4, 40])], 3)			
+						
+			attr_2 = tf.concat([attr_1]*4,axis=1)
+			o_d1 = tf.concat([o_d1, tf.reshape(attr_2,[-1, 4, 4, 2*self.num_attr])], 3)			
 			o_d2 = general_deconv2d(o_d1, 256, name="D512_1")
 			
-			attr_3 = tf.transpose(tf.stack([attr]*64),[1, 0, 2])
-			o_d2 = tf.concat([o_d2, tf.reshape(tf.transpose(attr_3,[1, 0, 2]),[-1, 8, 8, 40])], 3)
+			attr_3 = tf.concat([attr_2]*4,axis=1)
+			o_d2 = tf.concat([o_d2, tf.reshape(attr_3, [-1, 8, 8, 2*self.num_attr])], 3)
 			o_d3 = general_deconv2d(o_d2, 128, name="D256")
 			
-			attr_4 = tf.transpose(tf.stack([attr]*256),[1, 0, 2])
-			o_d3 = tf.concat([o_d3, tf.reshape(tf.transpose(attr_4,[1, 0, 2]),[-1, 16, 16, 40])], 3)
+			attr_4 = tf.concat([attr_3]*4,axis=1)
+			o_d3 = tf.concat([o_d3, tf.reshape(attr_4, [-1, 16, 16, 2*self.num_attr])], 3)
 			o_d4 = general_deconv2d(o_d3, 64, name="D128")
 			
-			attr_5 = tf.transpose(tf.stack([attr]*1024),[1, 0, 2])
-			o_d4 = tf.concat([o_d4, tf.reshape(tf.transpose(attr_5,[1, 0, 2]),[-1, 32, 32, 40])], 3)
+			attr_5 = tf.concat([attr_4]*4,axis=1)
+			o_d4 = tf.concat([o_d4, tf.reshape(attr_5, [-1, 32, 32, 2*self.num_attr])], 3)
 			o_d5 = general_deconv2d(o_d4, 32, name="D64")
 			
-			attr_6 = tf.transpose(tf.stack([attr]*4096),[1, 0, 2])
-			o_d5 = tf.concat([o_d5, tf.reshape(tf.transpose(attr_6,[1, 0, 2]),[-1, 64, 64, 40])], 3)
+			attr_6 = tf.concat([attr_5]*4,axis=1)
+			o_d5 = tf.concat([o_d5, tf.reshape(attr_6, [-1, 64, 64, 2*self.num_attr])], 3)
 			o_d6 = general_deconv2d(o_d5, 16, name="D32")
 			
-
-			attr_7 = tf.transpose(tf.stack([attr]*16384),[1, 0, 2])
-			o_d6 = tf.concat([o_d6, tf.reshape(tf.transpose(attr_7,[1, 0, 2]),[-1, 128, 128, 40])], 3)
+			attr_7 = tf.concat([attr_6]*4,axis=1)
+			o_d6 = tf.concat([o_d6, tf.reshape(attr_7, [-1, 128, 128, 2*self.num_attr])], 3)
 			o_d7 = general_deconv2d(o_d6, 3, name="D16")
 
 			return o_d7
@@ -211,15 +213,14 @@ class Fader():
 
 		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
 		self.input_attr = tf.placeholder(tf.float32, [self.batch_size, self.num_attr])
+		self.input_attr_1h = tf.placeholder(tf.float32, [self.batch_size, 2*self.num_attr])
 		self.lmda = tf.placeholder(tf.float32,[1])
 
 		with tf.variable_scope("Model") as scope:
 
 			self.o_enc = self.encoder(self.input_imgs)
-			self.o_dec = self.decoder(self.o_enc, self.input_attr)
+			self.o_dec = self.decoder(self.o_enc, self.input_attr_1h)
 			self.o_disc = self.discriminator(self.o_enc)
-			
-
 
 	def model_setup(self):
 
@@ -231,6 +232,19 @@ class Fader():
 
 		self.do_setup = False
 
+	def generation_loss(self, input_img, output_img, loss_type='mse'):
+
+		if (loss_type == 'mse'):
+			return tf.reduce_sum(tf.squared_difference(input_img, output_img), [1, 2, 3])
+		elif (loss_type == 'log_diff'):
+			epsilon = 1e-8
+			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
+
+
+	def discriminator_loss(self, out_attr, inp_attr):
+
+		return -tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr)),1)
+		
 	def loss_setup(self):
 
 		self.img_loss = tf.reduce_mean(self.generation_loss(self.input_imgs, self.o_dec))
@@ -247,14 +261,17 @@ class Fader():
 		self.enc_dec_loss_optimizer = optimizer.minimize(self.enc_dec_loss, var_list=enc_dec_vars)
 		self.disc_loss_optimizer = optimizer.minimize(self.disc_loss, var_list=disc_vars)
 
+
+	
+
 	def train(self):
 
 		self.model_setup()
 		self.loss_setup()
+		
+		sys.exit()
 
 		self.load_dataset()
-
-		# sys.exit()
 
 		init = tf.global_variables_initializer()
 		saver = tf.train.Saver()
