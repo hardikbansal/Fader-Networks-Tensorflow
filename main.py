@@ -151,13 +151,13 @@ class Fader():
 
 		with tf.variable_scope(name) as scope:
 
-			o_c1 = general_conv2d(input_enc, 16, name="C16")
-			o_c2 = general_conv2d(o_c1, 32, name="C32")
-			o_c3 = general_conv2d(o_c2, 64, name="C64")
-			o_c4 = general_conv2d(o_c3, 128, name="C128")
-			o_c5 = general_conv2d(o_c4, 256, name="C256")
-			o_c6 = general_conv2d(o_c5, 512, name="C512_1")
-			o_c7 = general_conv2d(o_c6, 512, name="C512_2")
+			o_c1 = general_conv2d(input_enc, 16, name="C16", relufactor=0.2)
+			o_c2 = general_conv2d(o_c1, 32, name="C32", relufactor=0.2)
+			o_c3 = general_conv2d(o_c2, 64, name="C64", relufactor=0.2)
+			o_c4 = general_conv2d(o_c3, 128, name="C128", relufactor=0.2)
+			o_c5 = general_conv2d(o_c4, 256, name="C256", relufactor=0.2)
+			o_c6 = general_conv2d(o_c5, 512, name="C512_1", relufactor=0.2)
+			o_c7 = general_conv2d(o_c6, 512, name="C512_2", relufactor=0.2)
 
 
 			return o_c7
