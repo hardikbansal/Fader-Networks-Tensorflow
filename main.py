@@ -39,8 +39,8 @@ class Fader():
 		self.parser.add_option('--dec_size', type='int', default=256, dest='dec_size')
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
 		self.parser.add_option('--dataset', type='string', default="celebA", dest='dataset')
-		self.parser.add_option('--dataset_dir', type='string', default="../datasets/img_align_celeba", dest='dataset_dir')
-		self.parser.add_option('--test_dataset_dir', type='string', default="../datasets/img_align_celeba", dest='test_dataset_dir')
+		self.parser.add_option('--dataset_dir', type='string', default="./datasets/img_align_celeba", dest='dataset_dir')
+		self.parser.add_option('--test_dataset_dir', type='string', default="./datasets/img_align_celeba", dest='test_dataset_dir')
 
 
 	def initialize(self):

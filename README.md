@@ -22,4 +22,14 @@ Picture below, depicts the architecture in the best way.
 It looks like a GAN-like architecture where Encoder tries to output an embedding X_emb , such that discriminator cannot guess what actual attributes of the images are, and at the same time, we train the Discriminator such that it tries to guess the attributes of image X even from the embedding X_emb. So, it acts like a two player game where performance of each will complement the performance of other in training. In the end, we will get a good encoder that can be used to create embedding from image X which is not dependent on its features. 
 After this, we will have the decoder, which we will simply use to get the image back, given embedding and the new attributes for the output image. For training, we will feed the same attribute Y and will try to get the original image back.
 
-Whole model will act as auto encoder with a mix of GANs.
+In whole model is an auto encoder with a mix of adverserial network.
+
+Training:
+
+Before training one needs to download the celeba dataset from the <a href="http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html"> link </a>. One also have to download the list of attributes as well.
+
+To start training the network, run the following command:
+
+``` python main.py ```
+
+You can also specify the dataset directory using ```--dataset``` argument to the above command. The output will be created in <b>output<b> folder.
