@@ -32,4 +32,4 @@ To start training the network, run the following command:
 
 ``` python main.py ```
 
-You can also specify the dataset directory using ```--dataset``` argument to the above command. The output will be created in <b>output<b> folder.
+You can also specify the dataset directory using ```--dataset``` argument to the above command. The output will be created in <b>output</b> folder.
