@@ -39,8 +39,8 @@ class Fader():
 		self.parser.add_option('--dec_size', type='int', default=256, dest='dec_size')
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
 		self.parser.add_option('--dataset', type='string', default="celebA", dest='dataset')
-		self.parser.add_option('--dataset_dir', type='string', default="./datasets/img_align_celeba", dest='dataset_dir')
-		self.parser.add_option('--test_dataset_dir', type='string', default="./datasets/img_align_celeba", dest='test_dataset_dir')
+		self.parser.add_option('--dataset_dir', type='string', default="../datasets/img_align_celeba", dest='dataset_dir')
+		self.parser.add_option('--test_dataset_dir', type='string', default="../datasets/img_align_celeba", dest='test_dataset_dir')
 
 
 	def initialize(self):
@@ -194,6 +194,8 @@ class Fader():
 			o_d6 = tf.concat([o_d6, tf.reshape(attr_7, [-1, 128, 128, 2*self.num_attr])], 3)
 			o_d7 = general_deconv2d(o_d6, 3, name="D16")
 
+			o_d7 = tf.nn.tanh(o_d7)
+
 			return o_d7
 
 
@@ -261,6 +263,10 @@ class Fader():
 
 		self.enc_dec_loss_optimizer = optimizer.minimize(self.enc_dec_loss, var_list=enc_dec_vars)
 		self.disc_loss_optimizer = optimizer.minimize(self.disc_loss, var_list=disc_vars)
+
+		self.img_loss_summ = tf.summary.scalar("img_loss", self.img_loss)
+		self.enc_loss_summ = tf.summary.scalar("enc_loss", self.enc_loss)
+		self.disc_loss_summ = tf.summary.scalar("disc_loss", self.disc_loss)
 	
 
 	def train(self):
@@ -289,11 +295,12 @@ class Fader():
 				chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
 				saver.restore(sess,chkpt_fname)
 
+			per_epoch_steps = int(self.num_train_images/self.batch_size)
+
 			for epoch in range(0, self.max_epoch):
 
-				for itr in range(0, int(self.num_train_images/self.batch_size)):
+				for itr in range(0, per_epoch_steps):
 
-					# print(time.time())
 
 					temp_lmd = 0.0001*(epoch*self.batch_size + itr)/(self.batch_size*self.max_epoch)
 
@@ -301,20 +308,24 @@ class Fader():
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 					attrs_1h = self.train_attr_1h[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
-					_, temp_tot_loss, temp_img_loss, temp_enc_loss = sess.run(
-						[self.enc_dec_loss_optimizer, self.enc_dec_loss, self.img_loss, self.enc_loss],
+					print(time.time())
+
+					_, temp_tot_loss, temp_img_loss, temp_enc_loss, img_loss_str, enc_loss_str = sess.run(
+						[self.enc_dec_loss_optimizer, self.enc_dec_loss, self.img_loss, self.enc_loss, self.img_loss_summ, self.enc_loss_summ],
 						feed_dict={self.input_imgs:imgs, self.input_attr_1h:attrs_1h, self.input_attr:attrs, self.lmda:[temp_lmd]})
 
 
-					_, temp_disc_loss = sess.run(
-						[self.disc_loss_optimizer, self.disc_loss],
+					_, temp_disc_loss, disc_loss_str = sess.run(
+						[self.disc_loss_optimizer, self.disc_loss, self.disc_loss_summ],
 						feed_dict={self.input_imgs:imgs, self.input_attr_1h:attrs_1h, self.input_attr:attrs, self.lmda:[temp_lmd]})
 
-					# print(time.time())
+					writer.add_summary(img_loss_str,epoch*per_epoch_steps + itr)
+					writer.add_summary(enc_loss_str,epoch*per_epoch_steps + itr)
+					writer.add_summary(disc_loss_str,epoch*per_epoch_steps + itr)
 
-					# sys.exit()
-				# print("We are in epoch "+ str(epoch) + " with a total_loss of " + str(temp_tot_loss) +
-				#  " image_loss of " + str(temp_img_loss) + " and discriminator_loss of " + str(temp_disc_loss))
+					print(time.time())
+
+
 
 				saver.save(sess,os.path.join(check_dir,"Fader"),global_step=epoch)
 
