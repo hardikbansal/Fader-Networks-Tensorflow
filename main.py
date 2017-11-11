@@ -30,8 +30,8 @@ class Fader():
 		self.parser.add_option('--img_height', type='int', default=256, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
 		self.parser.add_option('--num_attr', type='int', default=40, dest='num_attr')
-		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
-		self.parser.add_option('--num_train_images', type='int', default=500, dest='num_train_images')
+		self.parser.add_option('--max_epoch', type='int', default=64, dest='max_epoch')
+		self.parser.add_option('--num_train_images', type='int', default=20000, dest='num_train_images')
 		self.parser.add_option('--num_test_images', type='int', default=50, dest='num_test_images')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
 		self.parser.add_option('--steps', type='int', default=10, dest='steps')
@@ -241,12 +241,12 @@ class Fader():
 			return tf.reduce_sum(tf.squared_difference(input_img, output_img), [1, 2, 3])
 		elif (loss_type == 'log_diff'):
 			epsilon = 1e-8
-			return -tf.reduce_sum(input_img*tf.log(output_img+epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
+			return -tf.reduce_sum(input_img*tf.log(output_img + epsilon) + (1 - input_img)*tf.log(epsilon + 1 - output_img),[1, 2, 3])
 
 
 	def discriminator_loss(self, out_attr, inp_attr):
 
-		return tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr)),1)
+		return tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr) + epsilon),1)
 
 	def loss_setup(self):
 
@@ -327,7 +327,7 @@ class Fader():
 
 
 
-				saver.save(sess,os.path.join(check_dir,"Fader"),global_step=epoch)
+				saver.save(sess,os.path.join(self.check_dir,"Fader"),global_step=epoch)
 
 	def test(self):
 
