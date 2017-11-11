@@ -302,7 +302,7 @@ class Fader():
 				for itr in range(0, per_epoch_steps):
 
 
-					temp_lmd = 0.0001*(epoch*self.batch_size + itr)/(self.batch_size*self.max_epoch)
+					temp_lmd = 0.0001*(epoch*self.per_epoch_steps + itr)/(self.per_epoch_steps*self.max_epoch)
 
 					imgs = self.load_batch(itr, self.batch_size)
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
