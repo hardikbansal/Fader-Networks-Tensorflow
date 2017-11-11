@@ -245,7 +245,8 @@ class Fader():
 
 
 	def discriminator_loss(self, out_attr, inp_attr):
-
+		
+		epsilon = 1e-8
 		return tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr) + epsilon),1)
 
 	def loss_setup(self):
