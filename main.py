@@ -245,7 +245,7 @@ class Fader():
 
 
 	def discriminator_loss(self, out_attr, inp_attr):
-		
+
 		epsilon = 1e-8
 		return tf.reduce_sum(tf.log(tf.abs(out_attr-inp_attr) + epsilon),1)
 
@@ -303,7 +303,7 @@ class Fader():
 				for itr in range(0, per_epoch_steps):
 
 
-					temp_lmd = 0.0001*(epoch*self.per_epoch_steps + itr)/(self.per_epoch_steps*self.max_epoch)
+					temp_lmd = 0.0001*(epoch*per_epoch_steps + itr)/(per_epoch_steps*self.max_epoch)
 
 					imgs = self.load_batch(itr, self.batch_size)
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
@@ -323,6 +323,8 @@ class Fader():
 					writer.add_summary(img_loss_str,epoch*per_epoch_steps + itr)
 					writer.add_summary(enc_loss_str,epoch*per_epoch_steps + itr)
 					writer.add_summary(disc_loss_str,epoch*per_epoch_steps + itr)
+
+					print(temp_tot_loss, temp_img_loss, temp_enc_loss, temp_disc_loss)
 
 					print(time.time())
 
