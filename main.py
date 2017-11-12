@@ -31,8 +31,8 @@ class Fader():
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
 		self.parser.add_option('--num_attr', type='int', default=40, dest='num_attr')
 		self.parser.add_option('--max_epoch', type='int', default=64, dest='max_epoch')
-		self.parser.add_option('--num_train_images', type='int', default=20000, dest='num_train_images')
-		self.parser.add_option('--num_test_images', type='int', default=50, dest='num_test_images')
+		self.parser.add_option('--num_train_images', type='int', default=150000, dest='num_train_images')
+		self.parser.add_option('--num_test_images', type='int', default=50000, dest='num_test_images')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
 		self.parser.add_option('--steps', type='int', default=10, dest='steps')
 		self.parser.add_option('--enc_size', type='int', default=256, dest='enc_size')
@@ -107,7 +107,7 @@ class Fader():
 					dictn.append(temp[1:])
 
 			for i in range(self.num_train_images):
-				self.train_attr.append(((np.array(dictn[i]).astype(np.int32))+1/2).astype(np.int32))
+				self.train_attr.append(((np.array(dictn[i]).astype(np.int32)+1)/2).astype(np.int32))
 
 			self.train_attr_1h = self.transform_attr(self.train_attr)
 			# print(self.train_attr[0:10])
@@ -143,7 +143,7 @@ class Fader():
 		elif (mode == "test"):
 			temp = []
 			for i in range(batch_sz):
-				temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
+				temp.append(self.normalize_input(imresize(np.array(Image.open(self.imagePath[num_train_images + i + batch_sz*(batch_num)]),'f')[:,39:216,:], size=[256,256,3], interp="bilinear")))
 			return temp
 
 	
@@ -204,6 +204,7 @@ class Fader():
 		with tf.variable_scope(name) as scope:
 
 			o_disc1 = general_conv2d(input_disc, 512, name="C512")
+			o_disc1 = tf.layers.dropout(o_disc1, rate=0.3)
 			size_disc = o_disc1.get_shape().as_list()
 			o_flat = tf.reshape(o_disc1,[self.batch_size, 512])
 			o_disc2 = linear1d(o_flat, 512, 512, name="fc1")
@@ -285,7 +286,6 @@ class Fader():
 		if not os.path.exists(self.check_dir):
 			os.makedirs(self.check_dir)
 
-
 		with tf.Session() as sess:
 
 			sess.run(init)
@@ -298,10 +298,10 @@ class Fader():
 
 			per_epoch_steps = int(self.num_train_images/self.batch_size)
 
+			t = time.time()
+
 			for epoch in range(0, self.max_epoch):
-
 				for itr in range(0, per_epoch_steps):
-
 
 					temp_lmd = 0.0001*(epoch*per_epoch_steps + itr)/(per_epoch_steps*self.max_epoch)
 
@@ -309,15 +309,16 @@ class Fader():
 					attrs = self.train_attr[itr*self.batch_size:(itr+1)*(self.batch_size)]
 					attrs_1h = self.train_attr_1h[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
-					print(time.time())
+					print("In the iteration", itr, "of epoch", epoch)
+					print(time.time() - t)
 
 					_, temp_tot_loss, temp_img_loss, temp_enc_loss, img_loss_str, enc_loss_str = sess.run(
 						[self.enc_dec_loss_optimizer, self.enc_dec_loss, self.img_loss, self.enc_loss, self.img_loss_summ, self.enc_loss_summ],
 						feed_dict={self.input_imgs:imgs, self.input_attr_1h:attrs_1h, self.input_attr:attrs, self.lmda:[temp_lmd]})
 
 
-					_, temp_disc_loss, disc_loss_str = sess.run(
-						[self.disc_loss_optimizer, self.disc_loss, self.disc_loss_summ],
+					_, temp_disc_loss, disc_loss_str, temp_o_disc = sess.run(
+						[self.disc_loss_optimizer, self.disc_loss, self.disc_loss_summ, self.o_disc],
 						feed_dict={self.input_imgs:imgs, self.input_attr_1h:attrs_1h, self.input_attr:attrs, self.lmda:[temp_lmd]})
 
 					writer.add_summary(img_loss_str,epoch*per_epoch_steps + itr)
@@ -325,10 +326,6 @@ class Fader():
 					writer.add_summary(disc_loss_str,epoch*per_epoch_steps + itr)
 
 					print(temp_tot_loss, temp_img_loss, temp_enc_loss, temp_disc_loss)
-
-					print(time.time())
-
-
 
 				saver.save(sess,os.path.join(self.check_dir,"Fader"),global_step=epoch)
 
